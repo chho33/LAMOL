@@ -53,7 +53,6 @@ def parse_args():
     parser.add_argument("--model_name", type=str, default="gpt2", choices=["gpt2", "openai-gpt"])
     parser.add_argument("--n_gpus", type=int, default=1)
     parser.add_argument("--n_train_epochs", type=int, default=3)
-    parser.add_argument("--n_valid", type=int, default=374)
     parser.add_argument("--n_warmup_ratio", type=float, default=0.005)
     parser.add_argument("--n_workers", type=int, default=4)
     parser.add_argument("--use_sep", action="store_true")
@@ -181,98 +180,96 @@ TASK_DICT = {
                "train":os.path.join(args.data_dir,"squad-train-v1.1.json"),
                "eval":os.path.join(args.data_dir,"squad-dev-v1.1.json"),
                "test":os.path.join(args.data_dir,"squad-dev-v1.1.json"),
-               "n_train_epochs": 9 
-               #"n_train_epochs": 8
+               "n_train_epochs": args.n_train_epochs 
     },
     "squad2": {
                "train":os.path.join(args.data_dir,"squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"squad-dev-v2.0.json"),
-               "n_train_epochs": 8
+               "n_train_epochs": args.n_train_epochs 
     },
     "iwslt.en.de": {
                "train":os.path.join(args.data_dir,"iwslt.en.de_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"iwslt.en.de_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"iwslt.en.de_to_squad-test-v2.0.json"),
+               "n_train_epochs": args.n_train_epochs 
     },
     "cnn_dailymail": {
                "train":os.path.join(args.data_dir,"cnn_dailymail_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"cnn_dailymail_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"cnn_dailymail_to_squad-test-v2.0.json"),
+               "n_train_epochs": args.n_train_epochs 
     },
     "multinli.in.out": {
                "train":os.path.join(args.data_dir,"multinli.in.out_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"multinli.in.out_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"multinli.in.out_to_squad-dev-v2.0.json"),
-               "n_train_epochs": 9
+               "n_train_epochs": args.n_train_epochs 
     },
     "sst": {
                "train":os.path.join(args.data_dir,"sst_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"sst_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"sst_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9
+               "n_train_epochs": args.n_train_epochs 
     },
     "srl": {
                "train":os.path.join(args.data_dir,"srl_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"srl_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"srl_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
-               #"n_train_epochs": 16
+               "n_train_epochs": args.n_train_epochs 
     },
     "zre": {
                "train":os.path.join(args.data_dir,"zre_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"zre_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"zre_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
-               #"n_train_epochs": 8
+               "n_train_epochs": args.n_train_epochs 
     },
     "woz.en": {
                "train":os.path.join(args.data_dir,"woz.en_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"woz.en_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"woz.en_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
-               #"n_train_epochs": 20
+               "n_train_epochs": args.n_train_epochs 
     },
     "wikisql": {
                "train":os.path.join(args.data_dir,"wikisql_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"wikisql_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"wikisql_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
-               #"n_train_epochs": 8
+               "n_train_epochs": args.n_train_epochs 
     },
     "schema": {
                "train":os.path.join(args.data_dir,"schema_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"schema_to_squad-dev-v2.0.json"),
                "test":os.path.join(args.data_dir,"schema_to_squad-test-v2.0.json"),
+               "n_train_epochs": args.n_train_epochs 
     },
     "ag": {
                "train":os.path.join(args.data_dir,"ag_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"ag_to_squad-test-v2.0.json"),
                "test":os.path.join(args.data_dir,"ag_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
+               "n_train_epochs": args.n_train_epochs 
     },
     "dbpedia": {
                "train":os.path.join(args.data_dir,"dbpedia_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"dbpedia_to_squad-test-v2.0.json"),
                "test":os.path.join(args.data_dir,"dbpedia_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
+               "n_train_epochs": args.n_train_epochs 
     },
     "yahoo": {
                "train":os.path.join(args.data_dir,"yahoo_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"yahoo_to_squad-test-v2.0.json"),
                "test":os.path.join(args.data_dir,"yahoo_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
+               "n_train_epochs": args.n_train_epochs 
     },
     "amazon": {
                "train":os.path.join(args.data_dir,"amazon_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"amazon_to_squad-test-v2.0.json"),
                "test":os.path.join(args.data_dir,"amazon_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
+               "n_train_epochs": args.n_train_epochs 
     },
     "yelp": {
                "train":os.path.join(args.data_dir,"yelp_to_squad-train-v2.0.json"),
                "eval":os.path.join(args.data_dir,"yelp_to_squad-test-v2.0.json"),
                "test":os.path.join(args.data_dir,"yelp_to_squad-test-v2.0.json"),
-               "n_train_epochs": 9 
+               "n_train_epochs": args.n_train_epochs 
     },
 }
