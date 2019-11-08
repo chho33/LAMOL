@@ -16,7 +16,22 @@ Overall, LAMAL outperforms previous methods by a considerable margin and is only
 2--3\% worse than multitasking, which is usually considered the LLL upper bound.
 
 ## Dataset
-We first ran the code in https://github.com/salesforce/decaNLP to get the dataset, and then converted them into Squad-like format.
+
+| Task | Dataset (Original Data Link) |
+| ---- | ------- |
+| Question Answering | [SQuAD version 1.1](https://rajpurkar.github.io/SQuAD-explorer/) |
+| Machine Translation | [IWSLT](https://wit3.fbk.eu/mt.php?release=2016-01) |
+| Summarization | [CNN/DM](https://cs.nyu.edu/~kcho/DMQA/) |
+| Natural Language Inference | [CNN/DM](https://www.nyu.edu/projects/bowman/multinli/) |
+| Sentiment Analysis  | [SST](https://nlp.stanford.edu/sentiment/treebank.html) |
+| Semantic Role Labeling | [QA‑SRL](https://dada.cs.washington.edu/qasrl/) |
+| Zero-Shot Relation Extraction | [QA‑ZRE](http://nlp.cs.washington.edu/zeroshot/) |
+| Goal-Oriented Dialogue | [WOZ](https://github.com/nmrksic/neural-belief-tracker/tree/master/data/woz) |
+| Semantic Parsing | [WikiSQL](https://github.com/salesforce/WikiSQL) |
+| Commonsense Reasoning | [MWSC](https://s3.amazonaws.com/research.metamind.io/decaNLP/data/schema.txt) |
+| Text Classification | [AGNews, Yelp, Amazon, DBPedia, Yahoo](http://goo.gl/JyCnZq) |
+
+In order to unify the format of all the dataset, we first ran the code in https://github.com/salesforce/decaNLP to get the first 10 tranformed dataset, and then converted them into Squad-like format. For the last 5 dataset, we converted them directly. All converted dataset are available [here](https://drive.google.com/file/d/1rWcgnVcNpwxmBI3c5ovNx-E8XKOEL77S/view?usp=sharing).
 
 ## Dependencies
 - Ubuntu >= 16.04
@@ -31,7 +46,7 @@ We first ran the code in https://github.com/salesforce/decaNLP to get the datase
 1. Create the following two directories in wherever you want. (you can name the directories arbitrarily):
     - `data directory`: Where the dataset will be load by the model.
     - `model directory`: The place for the model to dump its outputs.
-2. Download the dataset: . After decompression, move all the files in the decompressed directory into `data directory`.
+2. Download the dataset: Download [here](https://drive.google.com/file/d/1rWcgnVcNpwxmBI3c5ovNx-E8XKOEL77S/view?usp=sharing) and decompress it. After decompression, move all the files in the decompressed directory into `data directory`.
 3. Make a copy of `env.example` and save it as `env`. In `env`, set the value of DATA_DIR as `data directory` and set the value of  MODEL_ROOT_DIR as `model directory`.
 4. Before training or testing, load DATA_DIR and MODEL_ROOT_DIR variables into shell environment by the following command:
    ```bash 
@@ -98,4 +113,6 @@ This example test the model trained on sst, srl and woz.en by finetune method.
 After running testing program, the metrics: `metrics.json` will be dumped in the same directory of Training's outputs.
 
 ## Acknowledgements:
-
+- We use the language model offered by [transformers](https://github.com/huggingface/transformers), a great state-of-the-art natural language processing models library by Thomas Wolf et al.
+- The implementation of MAS refer to [MAS-Memory-Aware-Synapses](https://github.com/rahafaljundi/MAS-Memory-Aware-Synapses), a great Memory Aware Synapses method implementation code by Aljundi R. et al.
+- Data format conversion refer to [decaNLP](https://github.com/salesforce/decaNLP), a great The Natural Language Decathlon: Multitask Learning as Question Answering implementation code by Bryan McCann et al.
