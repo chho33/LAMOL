@@ -31,6 +31,10 @@ def train(task_ids, model):
         prev_task = args.tasks[task_ids[0]-1]
         with torch.no_grad():
             create_extra_data(tasks[0], prev_task, model, train_extra_data)
+    elif "gem" in args.seq_train_type and task_ids[0] > 0: 
+        get_real_data(tasks[0], train_extra_data, accum=False, encode=True)
+        args.memory_data.append(train_extra_data)
+        train_extra_data = []
     logger.info('extra training data size: {}'.format(len(train_extra_data)))
 
     if not model:
@@ -90,7 +94,8 @@ def train(task_ids, model):
     max_train_batch_size = max(len(train_qadata) // args.min_n_steps, args.min_batch_size)
     train_dataloader = create_dataloader(train_qadata, "train", max_train_batch_size)
     if not args.unbound and args.seq_train_type != "multitask":
-        n_train_epochs = TASK_DICT[tasks[0]]["n_train_epochs"]
+        #n_train_epochs = TASK_DICT[tasks[0]]["n_train_epochs"]
+        n_train_epochs = args.n_train_epochs[tasks[0]]
     else:
         n_train_epochs = args.n_train_epochs['_'.join(tasks)]
     n_train_optimization_steps = len(train_qadata) * n_train_epochs
@@ -103,6 +108,16 @@ def train(task_ids, model):
         {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': args.weight_decay},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
+
+    if "gem" in args.seq_train_type:
+        model.task_id = task_ids[0]
+        if not hasattr(model, "grad_dims"):
+            model.grad_dims = []
+            for param in model.parameters():
+                model.grad_dims.append(param.data.numel())
+        if not hasattr(model, "grads"):
+            model.grads = torch.zeros(sum(model.grad_dims),len(args.tasks))
+            model.grads = model.grads.cuda()
 
     if args.seq_train_type in REG_TYPE_KEYS:
         optimizer = Weight_Regularized_AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
@@ -124,6 +139,8 @@ def train(task_ids, model):
 
     tot_n_steps = 0
     train_once = TrainStep(model, optimizer, scheduler)
+    if "gem" in args.seq_train_type and task_ids[0] != 0:
+        gem_step = GEMStep(model, parallel_model, train_loss_fct, optimizer)
     model.train()
     for ep in range(n_train_epochs):
         cum_loss, cum_qa_loss, cum_lm_loss, cur_n_inputs = 0, 0, 0, 0
@@ -139,6 +156,8 @@ def train(task_ids, model):
 
             losses = get_losses(parallel_model, cqa, Y, gen_X, gen_Y, train_loss_fct)
             loss = sum(losses)
+            if "gem" in args.seq_train_type and task_ids[0] != 0:
+                gem_step(task_ids[0])
             train_once(loss, n_inputs)
 
             qa_loss = losses[0].item() * n_inputs

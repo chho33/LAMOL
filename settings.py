@@ -20,6 +20,7 @@ MEMORY_FACTOR = {
     "lll": 0.35,
     "ewc": 0.30,
     "mas": 0.18,
+    "gem": 0.50,
 }
 TURING_ARCHS = {'Tesla V100', '2080 Ti'}
 MODEL_CLASSES = {
@@ -53,12 +54,13 @@ def parse_args():
     parser.add_argument("--model_name", type=str, default="gpt2", choices=["gpt2", "openai-gpt"])
     parser.add_argument("--n_gpus", type=int, default=1)
     parser.add_argument("--n_train_epochs", type=int, default=3)
+    parser.add_argument("--dynamic_epochs", action="store_true")
     parser.add_argument("--n_warmup_ratio", type=float, default=0.005)
     parser.add_argument("--n_workers", type=int, default=4)
     parser.add_argument("--use_sep", action="store_true")
     parser.add_argument("--reg_lambda", type=float, default=1.)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--seq_train_type", type=str, default="lll", choices=["lll","finetune","multitask","mas","ewc"])
+    parser.add_argument("--seq_train_type", type=str, default="lll", choices=["lll","finetune","multitask","mas","ewc","gem"])
     parser.add_argument("--tasks", nargs='+', default=["squad2"])
     parser.add_argument("--skip_tasks", nargs='+')
     parser.add_argument("--temperature_lm", type=float, default=1.0)
@@ -71,6 +73,7 @@ def parse_args():
     parser.add_argument("--top_p_qa", type=float, default=0.)
     parser.add_argument("--train_batch_size", type=int, default=0)
     parser.add_argument("--weight_decay", type=float, default=0.01)
+    parser.add_argument("--qp_margin", type=float, default=0.5)
     args = parser.parse_args()
 
     if args.debug:
@@ -141,9 +144,14 @@ def parse_args():
     elif args.unbound:
         pass
     else:
-        data_sizes = {task: data_attrs[task]["train"]["data_size"] for task in args.tasks}
-        max_total_data_size = max(data_sizes.values()) * args.n_train_epochs
-        args.n_train_epochs = {d[0]: min(args.max_n_epochs, max_total_data_size//d[1]) for d in data_sizes.items()}
+        if "gem" in args.seq_train_type:
+            args.memory_data = []
+        if args.dynamic_epochs:
+            data_sizes = {task: data_attrs[task]["train"]["data_size"] for task in args.tasks}
+            max_total_data_size = max(data_sizes.values()) * args.n_train_epochs
+            args.n_train_epochs = {d[0]: min(args.max_n_epochs, max_total_data_size//d[1]) for d in data_sizes.items()}
+        else:
+            args.n_train_epochs = {task: args.n_train_epochs for task in args.tasks}
 
     return args, model_config, model_class, tokenizer, config_class, special_token_ids, special_tokens, data_attrs, tokens_weight
 

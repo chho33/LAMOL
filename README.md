@@ -50,7 +50,7 @@ In order to unify the format of all the dataset, we first ran the code in https:
 3. Make a copy of `env.example` and save it as `env`. In `env`, set the value of DATA_DIR as `data directory` and set the value of  MODEL_ROOT_DIR as `model directory`.
 4. Before training or testing, load DATA_DIR and MODEL_ROOT_DIR variables into shell environment by the following command:
    ```bash 
-   source env
+   source ./env
    ```
 
 ## Training and Testing
@@ -115,4 +115,5 @@ After running testing program, the metrics: `metrics.json` will be dumped in the
 ## Acknowledgements:
 - We use the language model offered by [transformers](https://github.com/huggingface/transformers), a great state-of-the-art natural language processing models library by Thomas Wolf et al.
 - The implementation of MAS refer to [MAS-Memory-Aware-Synapses](https://github.com/rahafaljundi/MAS-Memory-Aware-Synapses), a great Memory Aware Synapses method implementation code by Aljundi R. et al.
+- The implementation of GEM refer to [GradientEpisodicMemory](https://github.com/facebookresearch/GradientEpisodicMemory), a great Gradient Episodic Memory method implementation code by Lopez-Paz, David et al.
 - Data format conversion refer to [decaNLP](https://github.com/salesforce/decaNLP), a great The Natural Language Decathlon: Multitask Learning as Question Answering implementation code by Bryan McCann et al.

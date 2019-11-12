@@ -17,6 +17,8 @@ from settings import args, TASK_DICT, SPECIAL_TOKENS, SPECIAL_TOKEN_IDS, FILL_VA
 from settings import TOKENIZER, LEN_FACTOR, DATA_ATTRS, MEMORY_FACTOR, MODEL_CONFIG, MODEL_CLASS
 from multiprocessing import Pool
 import sys
+import time
+import quadprog
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="UTF-8")
 logger = logging.getLogger(__name__)
@@ -164,6 +166,8 @@ class QADataset(Dataset):
 
         data = []
         for data_path in data_paths:
+            if not data_path:
+                continue
             with open(data_path, "r") as f:
                 raw_ds = json.load(f)
             raw_ds = map(lambda x: x["paragraphs"], raw_ds["data"])
@@ -174,7 +178,7 @@ class QADataset(Dataset):
         
         self.data = []
         self.max_a_len = 0
-        if len(data_paths)==1 and ('wiki' in data_paths[0] or 'woz' in data_paths[0]):
+        if len(data_paths)==1 and data_paths[0] is not None and ('wiki' in data_paths[0] or 'woz' in data_paths[0]):
             #data = self._sort_by_index(data)
             #args.n_workers = 1
             if 'wiki' in data_paths[0]:
@@ -183,7 +187,8 @@ class QADataset(Dataset):
                 answers_file = "woz.en_answers.json" 
             with open(os.path.join(args.data_dir,answers_file),"r") as f:
                 self.answers = json.load(f)
-        self.data_tokenization(data)
+        if len(data) > 0:
+            self.data_tokenization(data)
 
         if len(extra_data) > 0:
             extra_data = map(lambda x: self.etl_single_extra_data(x), extra_data)
@@ -345,11 +350,26 @@ class TrainStep:
             self.optimizer.backward(loss, update_master_grads=False)
         else:
             loss.backward()
+
         if not args.fp32:
             self.optimizer.update_master_grads()
             self.optimizer.clip_master_grads(args.max_grad_norm)
         else:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), args.max_grad_norm)
+
+        if "gem" in args.seq_train_type and self.model.task_id >0: 
+            store_grad(self.model.parameters, self.model.grads, self.model.grad_dims,self.model.task_id)
+            indx = torch.cuda.LongTensor([i for i in range(self.model.task_id)])
+            dotp = torch.mm(self.model.grads[:, self.model.task_id].unsqueeze(0),
+                            self.model.grads.index_select(1, indx))
+            if (dotp < 0).sum() != 0:
+                project2cone2(self.model.grads[:, self.model.task_id].unsqueeze(1),
+                              self.model.grads.index_select(1, indx), args.qp_margin)
+                # copy gradients back
+                overwrite_grad(self.model.parameters,
+                               self.model.grads[:, self.model.task_id],
+                               self.model.grad_dims)
+            
         if args.seq_train_type in args.REG_TYPE_KEYS:
             self.optimizer.step(self.model.reg_params)
         else:
@@ -358,6 +378,58 @@ class TrainStep:
             for i in range(scheduler_steps):
                 self.scheduler.step()
         self.optimizer.zero_grad()
+
+
+class GEMStep:
+    def __init__(self, model, parallel_model, train_loss_fct, optimizer):
+        self.model = model
+        self.parallel_model = parallel_model
+        self.train_loss_fct = train_loss_fct
+        self.optimizer = optimizer
+
+    def __call__(self,current_task_id):
+        for past_task_id, md in enumerate(args.memory_data):
+            # Not saving current task's grads.
+            if past_task_id >= current_task_id: return
+            qadata = QADataset(None, "test", "gen", md)[:90]
+            dataloader = create_dataloader(qadata, "test")
+            grads_tmp = torch.zeros(sum(self.model.grad_dims),).cuda()
+            if not args.fp32:
+                grads_tmp = grads_tmp.half() 
+            for _, _, cqa, _, Y, gen_X, gen_Y in dataloader:
+                #CHECK
+                n_inputs = sum(_cqa.shape[0] for _cqa in cqa)
+                self.optimizer.zero_grad()
+                for i in range(len(cqa)):
+                    cqa[i] = (cqa[i].to(args.device_ids[i]),)
+                    Y[i] = Y[i].to(args.device_ids[i])
+                    gen_X[i] = (gen_X[i].to(args.device_ids[i]),)
+                    gen_Y[i] = gen_Y[i].to(args.device_ids[i])
+
+                losses = get_losses(self.parallel_model, cqa, Y, gen_X, gen_Y, self.train_loss_fct)
+                loss = sum(losses)
+                if not args.fp32:
+                    self.optimizer.backward(loss, update_master_grads=False)
+                else:
+                    loss.backward()
+
+                if not args.fp32:
+                    #copy fp16 grads to fp32 grads  
+                    self.optimizer.update_master_grads()
+                    self.optimizer.clip_master_grads(args.max_grad_norm)
+                else:
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), args.max_grad_norm)
+                i = 0
+                for param in self.model.parameters():
+                    if param.grad is not None:
+                        beg = 0 if i == 0 else sum(self.model.grad_dims[:i])
+                        end = sum(self.model.grad_dims[:i+1])
+                        grads_tmp[beg: end] += param.grad.data.view(-1)*n_inputs
+                    i += 1
+
+            grads_tmp /= len(qadata)
+            self.model.grads[:, past_task_id].copy_(grads_tmp)
+            self.optimizer.zero_grad()
 
 
 class DynamicBatchSampler(Sampler):
@@ -523,11 +595,15 @@ def parse_single_real_data(data,task):
     return data
 
 
-def get_real_data(task, train_extra_data):
+def get_real_data(task, train_extra_data, accum=True, encode=True):
     task_idx = args.tasks.index(task)
-    prev_tasks = args.tasks[:task_idx]
     gen_size = DATA_ATTRS[task]["train"]["data_size"]
-    gen_size = int(np.ceil(gen_size * args.gen_lm_sample_percentage))//len(prev_tasks)
+    if accum:
+        prev_tasks = args.tasks[:task_idx]
+        gen_size = int(np.ceil(gen_size * args.gen_lm_sample_percentage))//len(prev_tasks)
+    else:
+        prev_tasks = [args.tasks[task_idx-1]]
+        gen_size = int(gen_size * args.gen_lm_sample_percentage)
 
     datum = []
     for prev_task in prev_tasks:
@@ -537,11 +613,13 @@ def get_real_data(task, train_extra_data):
         for i in indices:
             d = parse_single_real_data(data[i],prev_task)
             datum.append(d)
-            train_extra_data.append(TOKENIZER.encode(d))
+            if encode:
+                train_extra_data.append(TOKENIZER.encode(d))
         
     model_dir = get_model_dir([prev_task])
     dump_path = os.path.join(model_dir,"real.csv")
     write_extra_data(dump_path, datum)
+    return dump_path
 
 
 def read_extra_data(gen_path, train_extra_data):
@@ -728,3 +806,39 @@ def get_split_indices(data_sizes,chunk_sizes):
                 chunk_sizes.pop(0)
                 i+=1
     return records
+
+
+def store_grad(get_ps, grads, grad_dims, task_id): 
+    i = 0
+    for param in get_ps():
+        if param.grad is not None:
+            beg = 0 if i == 0 else sum(grad_dims[:i])
+            end = sum(grad_dims[:i+1])
+            grads[beg: end, task_id].copy_(param.grad.data.view(-1))
+        i += 1
+
+
+def overwrite_grad(pp, newgrad, grad_dims):
+    cnt = 0
+    for param in pp():
+        if param.grad is not None:
+            beg = 0 if cnt == 0 else sum(grad_dims[:cnt])
+            en = sum(grad_dims[:cnt + 1])
+            this_grad = newgrad[beg: en].contiguous().view(
+                param.grad.data.size())
+            param.grad.data.copy_(this_grad)
+        cnt += 1
+
+
+def project2cone2(gradient, memories, margin=0.5, eps=1e-3):
+    memories_np = memories.cpu().t().double().numpy()
+    gradient_np = gradient.cpu().contiguous().view(-1).double().numpy()
+    t = memories_np.shape[0]
+    P = np.dot(memories_np, memories_np.transpose())
+    P = 0.5 * (P + P.transpose()) + np.eye(t) * eps
+    q = np.dot(memories_np, gradient_np) * -1
+    G = np.eye(t)
+    h = np.zeros(t) + margin
+    v = quadprog.solve_qp(P, q, G, h)[0]
+    x = np.dot(v, memories_np) + gradient_np
+    gradient.copy_(torch.Tensor(x).view(-1, 1))
