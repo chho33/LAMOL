@@ -59,7 +59,7 @@ In order to unify the format of all the dataset, we first ran the code in https:
 
 | Options        | Description   |
 | -------------  | ------------- |
-| seq_train_type | The mode to deal with a sequence of tasks. Mode include: lll\|finetune\|multitask\|mas\|ewc. "lll" is the default value corresponding our proposed method. The others are the methods for comparing with our proposal. |
+| seq_train_type | The mode to deal with a sequence of tasks. Mode include: lll\|finetune\|multitask\|mas\|ewc\|gem. "lll" is the default value corresponding our proposed method. The others are the methods for comparing with our proposal. |
 | tasks          | A sequence of tasks we want to train by seq_train_type. Leave a space between tasks after the `--tasks` tag. Tasks are the keys in TASK_DICT variable in `settings.py` |
 | model_name     | The language model we want to use. The default is `gpt2`. Options include gpt2\|openai-gpt, |
 | gen_lm_sample_percentage | This tag only works with `--seq_train_type lll`. The percentage of the size of the dataset will be generated as pseudo samples for our proposed method. |
