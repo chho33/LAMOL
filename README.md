@@ -48,10 +48,6 @@ In order to unify the format of all the dataset, we first ran the code in https:
     - `model directory`: The place for the model to dump its outputs.
 2. Download the dataset: Download [here](https://drive.google.com/file/d/1rWcgnVcNpwxmBI3c5ovNx-E8XKOEL77S/view?usp=sharing) and decompress it. After decompression, move all the files in the decompressed directory into `data directory`.
 3. Make a copy of `env.example` and save it as `env`. In `env`, set the value of DATA_DIR as `data directory` and set the value of  MODEL_ROOT_DIR as `model directory`.
-4. Before training or testing, load DATA_DIR and MODEL_ROOT_DIR variables into shell environment by the following command:
-   ```bash 
-   source ./env
-   ```
 
 ## Training and Testing
 

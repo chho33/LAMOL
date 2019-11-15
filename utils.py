@@ -391,7 +391,7 @@ class GEMStep:
         for past_task_id, md in enumerate(args.memory_data):
             # Not saving current task's grads.
             if past_task_id >= current_task_id: return
-            qadata = QADataset(None, "test", "gen", md)[:90]
+            qadata = QADataset(None, "test", "gen", md)
             dataloader = create_dataloader(qadata, "test")
             grads_tmp = torch.zeros(sum(self.model.grad_dims),).cuda()
             if not args.fp32:
