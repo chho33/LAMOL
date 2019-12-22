@@ -109,7 +109,8 @@ This example test the model trained on sst, srl and woz.en by finetune method.
 After running testing program, the metrics: `metrics.json` will be dumped in the same directory of Training's outputs.
 
 ## Acknowledgements:
-- We use the language model offered by [transformers](https://github.com/huggingface/transformers), a great state-of-the-art natural language processing models library by Thomas Wolf et al.
-- The implementation of MAS refer to [MAS-Memory-Aware-Synapses](https://github.com/rahafaljundi/MAS-Memory-Aware-Synapses), a great Memory Aware Synapses method implementation code by Aljundi R. et al.
-- The implementation of GEM refer to [GradientEpisodicMemory](https://github.com/facebookresearch/GradientEpisodicMemory), a great Gradient Episodic Memory method implementation code by Lopez-Paz, David et al.
-- Data format conversion refer to [decaNLP](https://github.com/salesforce/decaNLP), a great The Natural Language Decathlon: Multitask Learning as Question Answering implementation code by Bryan McCann et al.
+- We use the language model offered by [transformers](https://github.com/huggingface/transformers), a state-of-the-art natural language processing models library by Thomas Wolf et al.
+- The implementation of MAS follows [MAS-Memory-Aware-Synapses](https://github.com/rahafaljundi/MAS-Memory-Aware-Synapses), the Memory Aware Synapses method implementation code by Aljundi R. et al.
+- The implementation of GEM follows [GradientEpisodicMemory](https://github.com/facebookresearch/GradientEpisodicMemory), the Gradient Episodic Memory method implementation code by Lopez-Paz, David et al.
+- The implementation of fp16 (`fp16.py`, `fp16util.py`) is from [Megatron-LM](https://github.com/NVIDIA/Megatron-LM), the ongoing research training transformer language models at scale by NVIDIA.
+- Data format conversion refer to [decaNLP](https://github.com/salesforce/decaNLP), the Natural Language Decathlon: Multitask Learning as Question Answering implementation code by Bryan McCann et al.
